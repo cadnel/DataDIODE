@@ -1,0 +1,44 @@
+#######################
+#  IPTABLES RULES     #
+#  FOR THE DATA DIODE #
+#  PITCHER SIDE       #
+#######################
+
+#for this example I changed the default SSH port to 2122
+#Execute the script with sudo privileges
+#If you got this error message [SIOCSARP: Le réseau n'est pas accessible] while running the script on your own machine is normal
+
+#!/bin/bash
+
+#System Config variable
+
+CATCHER_IP_ADDR="192.168.2.130"
+CATCHER_HW_ADDR="08:00:27:ae:ec:81"
+AIS_SRV_IP="192.168.0.117"
+
+#Flush all existing rules
+iptables -F
+iptables -X
+
+#Accept Loopback, SSH and UDP
+iptables -A INPUT -i lo -j ACCEPT
+iptables -A INPUT -p tcp -m tcp --dport 2122 -j ACCEPT
+iptables -A INPUT -p udp -s $AIS_SRV_IP -j ACCEPT
+
+#Permit the return of Loopback and SSH 
+iptables -A OUTPUT -o lo -j ACCEPT
+iptables -A OUTPUT -p tcp --sport 2122 -m state --state ESTABLISHED -j ACCEPT
+
+
+#Implicit deny rule according to our case
+iptables -P INPUT DROP
+iptables -P OUTPUT ACCEPT
+
+#Reload the iptable config
+netfilter-persistent save
+
+#Add the static ARP entry in the system
+arp -s $CATCHER_IP_ADDR $CATCHER_HW_ADDR
+
+#Print the new rules
+iptables -L -nv --line-numbers
